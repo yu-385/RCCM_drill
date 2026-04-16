@@ -178,6 +178,9 @@ def main():
     # 現在の問題を取得
     prob_id, year, q_num, img_path, correct_ans = st.session_state.questions[q_idx]
 
+    # Windows(ローカル)とLinux(クラウド)のパス区切り文字の違いを吸収するため、\ を / に統一する
+    img_path = img_path.replace('\\', '/')
+
     st.progress((q_idx) / q_total)
     st.write(f"**第 {q_idx + 1} 問** ({year}年度 問題 {q_num})")
     
