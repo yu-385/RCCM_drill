@@ -35,11 +35,16 @@ def get_cached_explanation(problem_id):
     return row[0] if row else None
 
 def save_explanation(problem_id, text):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("INSERT INTO explanations (problem_id, explanation_text) VALUES (?, ?)", (problem_id, text))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO explanations (problem_id, explanation_text) VALUES (?, ?)", (problem_id, text))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        # クラウド上でDBが読み取り専用になっており書き込めない場合はキャッシュを諦める（クラッシュ回避）
+        print(f"Skipping cache save due to DB error: {e}")
+        pass
 
 def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
     if not api_key:
