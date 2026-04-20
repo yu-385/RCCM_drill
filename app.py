@@ -14,14 +14,22 @@ if not os.path.exists("images") and os.path.exists("images.zip"):
 
 st.set_page_config(page_title="過去問統合ドリルアプリ", layout="centered", page_icon="📚")
 
-def get_questions(category, field=None):
+def get_questions(category, field=None, mode="random", target_year=None):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    if field:
-        cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=? ORDER BY RANDOM() LIMIT 20", (category, field))
+    
+    if mode == "random":
+        if field:
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=? ORDER BY RANDOM() LIMIT 20", (category, field))
+        else:
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL ORDER BY RANDOM() LIMIT 20", (category,))
     else:
-        # fieldが指定されていない場合は基本（NULLまたは空）のものを対象とするが、全検索する場合も考慮（ここではNULLのみ）
-        cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL ORDER BY RANDOM() LIMIT 20", (category,))
+        # yearlyモード
+        if field:
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=? AND year=? ORDER BY CAST(question_num AS INTEGER)", (category, field, target_year))
+        else:
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL AND year=? ORDER BY CAST(question_num AS INTEGER)", (category, target_year))
+
     rows = cur.fetchall()
     conn.close()
     return rows
@@ -99,6 +107,19 @@ def get_available_fields(category):
     conn.close()
     return [r[0] for r in rows if r[0]]
 
+def get_available_years(category, field=None):
+    if not os.path.exists(DB_PATH):
+        return []
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    if field:
+        cur.execute("SELECT DISTINCT year FROM problems WHERE category=? AND field=?", (category, field))
+    else:
+        cur.execute("SELECT DISTINCT year FROM problems WHERE category=? AND field IS NULL", (category,))
+    rows = cur.fetchall()
+    conn.close()
+    return sorted([r[0] for r in rows if r[0]])
+
 def main():
     st.title("📚 過去問統合ドリルAI")
     
@@ -140,24 +161,47 @@ def main():
                 st.info("登録されている専門分野データがありません。")
                 
         st.markdown("---")
+        st.header("🎮 出題モード")
+        selected_mode = st.radio(
+            "モードを選択してください",
+            options=["random", "yearly"],
+            format_func=lambda x: "🎲 ランダム20問" if x == "random" else "📅 年度別通しプレイ"
+        )
+        
+        selected_year = None
+        if selected_mode == "yearly":
+            avail_years = get_available_years(selected_cat, selected_field)
+            if avail_years:
+                selected_year = st.selectbox(
+                    "挑戦する年度を選択してください",
+                    options=avail_years
+                )
+            else:
+                st.info("該当する年度データが見つかりません。")
+                
+        st.markdown("---")
         st.header("⚙️ API設定")
         api_key = st.text_input("Gemini API Key", type="password", help="AIによる動的解説を使用するにはAPIキーを入力してください。")
         st.caption("※ 一度生成した解説はデータベースにキャッシュされ、次回以降高速に表示されます。")
         
-    # カテゴリや分野が変更されたらセッションをリセット
+    # カテゴリや分野、出題モードが変更されたらセッションをリセット
     if ("current_category" not in st.session_state or 
         st.session_state.current_category != selected_cat or
-        st.session_state.get("current_field") != selected_field):
+        st.session_state.get("current_field") != selected_field or
+        st.session_state.get("current_mode") != selected_mode or
+        st.session_state.get("current_year") != selected_year):
         st.session_state.current_category = selected_cat
         st.session_state.current_field = selected_field
-        st.session_state.questions = get_questions(selected_cat, selected_field)
+        st.session_state.current_mode = selected_mode
+        st.session_state.current_year = selected_year
+        st.session_state.questions = get_questions(selected_cat, selected_field, selected_mode, selected_year)
         st.session_state.current_idx = 0
         st.session_state.score = 0
         st.session_state.answered = False
         st.session_state.selected_ans = None
         
     if "questions" not in st.session_state:
-        st.session_state.questions = get_questions(selected_cat, selected_field)
+        st.session_state.questions = get_questions(selected_cat, selected_field, selected_mode, selected_year)
         st.session_state.current_idx = 0
         st.session_state.score = 0
         st.session_state.answered = False
