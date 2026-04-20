@@ -19,18 +19,42 @@ def get_questions(category, field=None, mode="random", target_year=None):
     cur = conn.cursor()
     
     if mode == "random":
+        limit = 30 if category == "Q4-2" else 20
+        
+        # まず対象科目（分野）のすべての問題をごっそり取得する
         if field:
-            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=? ORDER BY RANDOM() LIMIT 20", (category, field))
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=?", (category, field))
         else:
-            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL ORDER BY RANDOM() LIMIT 20", (category,))
+            cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL", (category,))
+        all_rows = cur.fetchall()
+        
+        # 問題番号ごとにグループ化して分類する
+        from collections import defaultdict
+        import random
+        
+        grouped = defaultdict(list)
+        for row in all_rows:
+            # row[2] が question_num
+            grouped[row[2]].append(row)
+            
+        selected_rows = []
+        # 各問題番号グループから「ランダムな年度の過去問１つ」をくじ引きで決める（類似問題回避）
+        for q_num, items in grouped.items():
+            selected_rows.append(random.choice(items))
+            
+        # シャッフルした上で上限数で切り取る
+        random.shuffle(selected_rows)
+        rows = selected_rows[:limit]
+        
     else:
         # yearlyモード
         if field:
             cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field=? AND year=? ORDER BY CAST(question_num AS INTEGER)", (category, field, target_year))
         else:
             cur.execute("SELECT id, year, question_num, image_path, correct_answer FROM problems WHERE category=? AND field IS NULL AND year=? ORDER BY CAST(question_num AS INTEGER)", (category, target_year))
+        
+        rows = cur.fetchall()
 
-    rows = cur.fetchall()
     conn.close()
     return rows
 
