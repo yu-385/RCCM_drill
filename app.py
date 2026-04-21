@@ -102,20 +102,13 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
         )
         
         try:
-            # 最新版(2.5)は挙動が不安定な場合があるため安定版の2.0-flashを使用
+            # 元々動いていた 2.5-flash にモデルを戻す（プロンプト強化版）
             response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-2.5-flash',
                 contents=[img, prompt]
             )
         except Exception as api_err:
-            if "503" in str(api_err) or "UNAVAILABLE" in str(api_err):
-                # サーバー混雑時は予備のモデルを利用
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[img, prompt]
-                )
-            else:
-                raise api_err
+            raise api_err
                 
         # 安全フィルター等でブロックされた、あるいは空の応答が返ってきた場合のフェイルセーフ
         if not response or not response.text:
