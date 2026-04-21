@@ -108,10 +108,10 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
                 contents=[img, prompt]
             )
         except Exception as api_err:
-            if "503" in str(api_err) or "UNAVAILABLE" in str(api_err) or "429" in str(api_err):
-                # 混雑状態の時は1.5-flashにフォールバックしてリトライ
+            if "503" in str(api_err) or "UNAVAILABLE" in str(api_err):
+                # サーバー混雑時は予備のモデルを利用
                 response = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='gemini-2.5-flash',
                     contents=[img, prompt]
                 )
             else:
