@@ -107,6 +107,13 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
             else:
                 raise api_err
                 
+        # 安全フィルター等でブロックされた、あるいは空の応答が返ってきた場合のフェイルセーフ
+        if not response or not response.text:
+            reason = "Unknown"
+            if hasattr(response, "candidates") and response.candidates:
+                reason = getattr(response.candidates[0], "finish_reason", "Unknown")
+            raise Exception(f"AIからの返答が空でした（安全フィルター等によるブロックの可能性があります）\nFinish Reason: {reason}")
+                
         return f"### {year}年 問{q_num} の解説（AI自動生成）\n\n正解は **{correct_ans}** です。\n\n#### 解説\n{response.text}"
     except Exception as e:
         return f"### {year}年 問{q_num} の解説\n\n正解は **{correct_ans}** です。\n\n🚨 AI解説の生成中にエラーが発生しました:\n```\n{e}\n```"
