@@ -90,19 +90,29 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
         client = genai.Client(api_key=api_key)
         
         img = PIL.Image.open(image_path)
-        prompt = f"これは{year}年度の試験問題の問{q_num}です。公式の正解選択肢は「{correct_ans}」です。\nこの問題の解き方と、なぜ「{correct_ans}」が正解となるのか、専門的な知識も活用して受験者向けに分かりやすく詳細に解説してください。"
+        prompt = (
+            f"あなたは土木技術・RCCM資格試験の専門インストラクターです。\n"
+            f"添付された画像は、{year}年度の実際の試験問題（問{q_num}）です。\n"
+            f"公式の正解選択肢は「{correct_ans}」です。\n\n"
+            f"【必ず以下の構成で出力してください】\n"
+            f"1. 問題のテーマと要点\n"
+            f"2. なぜ「{correct_ans}」が正解となるのかの詳しい解説\n"
+            f"3. 他の選択肢がなぜ誤り（または不適切）なのかの解説\n\n"
+            f"※絶対に空の回答を出力せず、分かりやすい解説を提示してください。"
+        )
         
         try:
+            # 最新版(2.5)は挙動が不安定な場合があるため安定版の2.0-flashを使用
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=[prompt, img]
+                model='gemini-2.0-flash',
+                contents=[img, prompt]
             )
         except Exception as api_err:
-            if "503" in str(api_err) or "UNAVAILABLE" in str(api_err):
-                # 混雑状態の時は2.0にフォールバックしてリトライ
+            if "503" in str(api_err) or "UNAVAILABLE" in str(api_err) or "429" in str(api_err):
+                # 混雑状態の時は1.5-flashにフォールバックしてリトライ
                 response = client.models.generate_content(
-                    model='gemini-2.0-flash',
-                    contents=[prompt, img]
+                    model='gemini-1.5-flash',
+                    contents=[img, prompt]
                 )
             else:
                 raise api_err
