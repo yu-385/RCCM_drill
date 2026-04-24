@@ -6,11 +6,16 @@ import zipfile
 
 DB_PATH = "exam_data.db"
 
-# Streamlit Cloud上で画像フォルダが存在しない場合は、images.zip から自動解凍する
-if not os.path.exists("images") and os.path.exists("images.zip"):
-    with zipfile.ZipFile("images.zip", 'r') as zip_ref:
-        # 現在のディレクトリに解凍（Compress-Archiveで圧縮したため内部にimagesフォルダが含まれる前提）
-        zip_ref.extractall()
+import glob
+
+# Streamlit Cloud上で画像フォルダが存在しない場合は、ZIPファイル群から自動解凍する
+if not os.path.exists("images"):
+    zip_files = sorted(glob.glob("images*.zip"))
+    if zip_files:
+        for zf in zip_files:
+            with zipfile.ZipFile(zf, 'r') as zip_ref:
+                # 現在のディレクトリに解凍（内部にimagesフォルダが含まれる前提）
+                zip_ref.extractall()
 
 st.set_page_config(page_title="過去問統合ドリルアプリ", layout="centered", page_icon="📚")
 
