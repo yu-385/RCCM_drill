@@ -95,16 +95,29 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
         client = genai.Client(api_key=api_key)
         
         img = PIL.Image.open(image_path)
-        prompt = (
-            f"あなたは土木技術・RCCM資格試験の専門インストラクターです。\n"
-            f"添付された画像は、{year}年度の実際の試験問題（問{q_num}）です。\n"
-            f"公式の正解選択肢は「{correct_ans}」です。\n\n"
-            f"【必ず以下の構成で出力してください】\n"
-            f"1. 問題のテーマと要点\n"
-            f"2. なぜ「{correct_ans}」が正解となるのかの詳しい解説\n"
-            f"3. 他の選択肢がなぜ誤り（または不適切）なのかの解説\n\n"
-            f"※絶対に空の回答を出力せず、分かりやすい解説を提示してください。"
-        )
+        
+        if correct_ans:
+            prompt = (
+                f"あなたは土木技術・RCCM資格試験の専門インストラクターです。\n"
+                f"添付された画像は、{year}年度の実際の試験問題（問{q_num}）です。\n"
+                f"公式の正解選択肢は「{correct_ans}」です。\n\n"
+                f"【必ず以下の構成で出力してください】\n"
+                f"1. 問題のテーマと要点\n"
+                f"2. なぜ「{correct_ans}」が正解となるのかの詳しい解説\n"
+                f"3. 他の選択肢がなぜ誤り（または不適切）なのかの解説\n\n"
+                f"※絶対に空の回答を出力せず、分かりやすい解説を提示してください。"
+            )
+        else:
+            prompt = (
+                f"あなたは土木技術・RCCM資格試験の専門インストラクターです。\n"
+                f"添付された画像は、{year}年度の実際の試験問題（問{q_num}）です。\n"
+                f"この問題は公式の正解が発表されていない（解なし、あるいは不適切問題）可能性があります。\n\n"
+                f"【必ず以下の構成で出力してください】\n"
+                f"1. 問題のテーマと要点\n"
+                f"2. 画像の問題文と選択肢を読み解き、もし強いて正解を選ぶとしたらどれになるか、またはなぜ「解なし（不適切問題）」となったと考えられるかの専門的な考察\n"
+                f"3. 各選択肢の技術的な解説\n\n"
+                f"※絶対に空の回答を出力せず、分かりやすい解説を提示してください。"
+            )
         
         try:
             # 元々動いていた 2.5-flash にモデルを戻す（プロンプト強化版）
@@ -122,7 +135,8 @@ def generate_ai_explanation(year, q_num, correct_ans, image_path, api_key):
                 reason = getattr(response.candidates[0], "finish_reason", "Unknown")
             raise Exception(f"AIからの返答が空でした（安全フィルター等によるブロックの可能性があります）\nFinish Reason: {reason}")
                 
-        return f"### {year}年 問{q_num} の解説（AI自動生成）\n\n正解は **{correct_ans}** です。\n\n#### 解説\n{response.text}"
+        correct_ans_disp = correct_ans if correct_ans else "不明（または解なし）"
+        return f"### {year}年 問{q_num} の解説（AI自動生成）\n\n正解は **{correct_ans_disp}** です。\n\n#### 解説\n{response.text}"
     except Exception as e:
         return f"### {year}年 問{q_num} の解説\n\n正解は **{correct_ans}** です。\n\n🚨 AI解説の生成中にエラーが発生しました:\n```\n{e}\n```"
 
