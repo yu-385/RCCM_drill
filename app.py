@@ -188,7 +188,9 @@ def main():
                         "doro": "道路",
                         "josuido": "上水道",
                         "gesuido": "下水道",
-                        "kasen": "河川"
+                        "kasen": "河川",
+                        "nogyo": "農業土木",
+                        "nogyo_doboku": "農業土木"
                     }.get(x, x)
                 )
             else:
@@ -289,11 +291,15 @@ def main():
                 st.rerun()
 
     if st.session_state.answered:
+        correct_ans_disp = correct_ans if correct_ans else "不明（AI解説を参照）"
         is_correct = (st.session_state.selected_ans == correct_ans)
-        if is_correct:
+        
+        if not correct_ans:
+            st.warning("⚠️ この問題の公式解答データがシステムに登録されていません。AIの解説から正解を確認してください！")
+        elif is_correct:
             st.success("✅ 正解！")
         else:
-            st.error(f"❌ 不正解... 正解は **{correct_ans}** です。")
+            st.error(f"❌ 不正解... 正解は **{correct_ans_disp}** です。")
             
         with st.spinner("解説を表示しています..."):
             explanation = get_cached_explanation(prob_id)
